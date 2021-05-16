@@ -7,21 +7,13 @@ Base = declarative_base()
 
 class Department(Base):
     __tablename__ = 'department'
-    departament_id = Column(Integer, primary_key=True)
+    id = Column(Integer, primary_key=True)
     name = Column(String)
-
-
-class Salary(Base):
-    __tablename__ = 'salary'
-    salary_id = Column(Integer, primary_key=True)
-    salary = Column(Integer)
-    employee_id = Column(Integer, ForeignKey('employee.id'))
-    employee = relationship("Employee", back_populates="salary")
 
 
 class Employee(Base):
     __tablename__ = 'employee'
-    employee_id = Column(Integer, primary_key=True)
+    id = Column(Integer, primary_key=True)
     name = Column(String)
     # Use default=func.now() to set the default hiring time
     # of an Employee to be the current time when an
@@ -31,14 +23,22 @@ class Employee(Base):
     # Use cascade='delete,all' to propagate the deletion of a Department onto its Employees
     department = relationship(
         Department,
-        backref=backref('employees',
-                        uselist=True,
-                        cascade='delete,all'))
-    salary = relationship(
-        Salary,
         backref=backref('employee',
                         uselist=True,
                         cascade='delete,all'))
+
+
+class Salary(Base):
+    __tablename__ = 'salary'
+    id = Column(Integer, primary_key=True)
+    salary = Column(Integer)
+    employee_id = Column(Integer, ForeignKey('employee.id'))
+    employee = relationship(
+        Employee,
+        backref=backref('salary',
+                        uselist=True,
+                        cascade='delete,all'))
+
 
 
 from sqlalchemy import create_engine
