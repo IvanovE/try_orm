@@ -1,49 +1,10 @@
-from sqlalchemy import Column, DateTime, String, Integer, ForeignKey, func
-from sqlalchemy.orm import relationship, backref
-from sqlalchemy.ext.declarative import declarative_base
-
-Base = declarative_base()
-
-
-class Department(Base):
-    __tablename__ = 'department'
-    id = Column(Integer, primary_key=True)
-    name = Column(String)
-
-
-class Employee(Base):
-    __tablename__ = 'employee'
-    id = Column(Integer, primary_key=True)
-    name = Column(String)
-    # Use default=func.now() to set the default hiring time
-    # of an Employee to be the current time when an
-    # Employee record was created
-    hired_on = Column(DateTime, default=func.now())
-    department_id = Column(Integer, ForeignKey('department.id'))
-    # Use cascade='delete,all' to propagate the deletion of a Department onto its Employees
-    department = relationship(
-        Department,
-        backref=backref('employee',
-                        uselist=True,
-                        cascade='delete,all'))
-
-
-class Salary(Base):
-    __tablename__ = 'salary'
-    id = Column(Integer, primary_key=True)
-    salary = Column(Integer)
-    employee_id = Column(Integer, ForeignKey('employee.id'))
-    employee = relationship(
-        Employee,
-        backref=backref('salary',
-                        uselist=True,
-                        cascade='delete,all'))
-
-
+from classes import *
+from class_generators import generate_salary, generate_employees, generate_departmets
 
 from sqlalchemy import create_engine
 
-engine = create_engine('sqlite:///orm.sqlite')  # an Engine, which the Session will use for connection
+engine = create_engine('sqlite:///orm9', connect_args={'timeout': 15})  # an Engine, which the Session will
+# use for connection
 
 from sqlalchemy.orm import sessionmaker
 
@@ -56,31 +17,112 @@ session.configure(bind=engine)  # bind -Engine или другой объект 
 
 Base.metadata.create_all(engine)
 
-# def generate_employee(count):
-#     result = []
-#     for _ in range(count):
-#         item = Employee(name=)
-
-d = Department(name="TIds")
-emp1 = Employee(name="Jocsxhn", department=d)
-salary1 = Salary(salary=30000, employee=emp1)
-
 # work with session
+
 s = session()
 
-s.add(d)
-s.add(emp1)
-s.add(salary1)
-s.commit()
-# s.delete(emp1)
-s.close()
+# generate_departmets(5, s)
+# departments = s.query(Department.id).all()
+# print(departments)
+
+#  Добавить 20 работников
+
+# generate_employees(20, s, departments)
 
 
-# Проблема блокировки бд
+# сделать 10 штук (выбор из 20, 30, 40)
 
-# con = sqlite3.connect()
-# con.isolation_level = 'EXCLUSIVE'
-# con.execute('BEGIN EXCLUSIVE')
-# #exclusive access starts here. Nothing else can r/w the db, do your magic here.
-# con.commit()
-# con.close()
+# employees = s.query(Employee).all()
+# print(employees)
+# generate_salary(10, s, employees)
+
+# result = s.query(Employee).filter(Employee.department_id == 5).all()
+# print(result)
+# print(len(result))
+
+
+# Получить всех работник, у которых нет зп
+
+
+# Добавить 30 селари и получить тех, у кого зп 20, 30, 40к
+
+# employees = s.query(Employee.id).all()
+# generate_salary(20, s, employees)
+
+# result = s.query(Employee, Salary.salary).join(Salary).filter(Salary.salary == 20000).all()
+# print(result)
+
+# result_20 = []
+# result_30 = []
+# result_40 = []
+# for p in s.query(Employee).join(Salary).filter(Salary.salary == 20000).all():
+#     result_20.append((p.id, p.name))
+# print(result_20)
+# for p in s.query(Employee).join(Salary).filter(Salary.salary == 30000).all():
+#     result_30.append((p.id, p.name))
+# print(result_30)
+# for p in s.query(Employee).join(Salary).filter(Salary.salary == 40000).all():
+#     result_40.append((p.id, p.name))
+# print(result_40)
+
+
+# Одинаковые департаменты
+
+# for p in s.query(func.count(Employee.department_id) >= 2, Employee.id, Employee.name, Employee.department_id)\
+#         .group_by(Employee.department_id).all():
+#     print(p)
+
+
+# Вывести, у кого больше одной зп
+
+from sqlalchemy import func
+
+# result = s.query(func.count(Salary.employee_id) >= 2, Salary.employee_id).group_by(Salary.employee_id).all()
+# print(result)
+
+# result = s.query(Salary.employee_id, Salary.id).group_by(Salary.employee_id).having(func.count(Salary.employee_id) > 1).all()
+# print(result)
+
+# print(
+#     s.query(Employee, func.count(Salary.employee_id)).join(Salary).group_by(Salary.employee_id).having(
+#         func.count(Salary.employee_id) > 1).all()
+# )
+
+# print(
+#     s.query(Employee, Salary.id).join(Salary, isouter=True).filter(Salary.id is None).count())
+
+
+# print(s.query(Salary).group_by(Salary.employee_id).count())
+
+
+# print(
+#     s.query(Employee, Salary.id).join(Salary, isouter=True).filter(Salary.id == None,
+#                                                                    Employee.department_id == 2).all())
+
+# print(
+#     s.query(Employee, func.count(Salary.employee_id)).join(Salary).filter(Employee.department_id == 1).group_by(
+#         Salary.employee_id).having(func.count(Salary.employee_id) > 1).all())
+
+
+# print(
+#     s.query(Employee.department_id, func.count(Employee.id)).join(Salary, isouter=True).filter(
+#         Salary.id == None).group_by(Employee.department_id).having(func.count(Employee.id)).order_by(
+#         func.count(Employee.id).desc()).first())
+
+
+# Вывести для каждого работника его последнюю зарплату
+
+# print(
+#     s.query(Employee.id, Employee.name, Salary.salary).join(Salary).group_by(Employee.id).all()
+# )
+
+
+# Посчитать сколько в сумме зп у каждого департамента, учесть что работники могут повторяться
+# (два запроса: с учетом повторения и без)
+
+# print(
+#     s.query(Department.id, Department.name, ).join(Salary).join(Employee).group_by(Department.id).all()
+# )
+
+
+engine.dispose()
